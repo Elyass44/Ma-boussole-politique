@@ -1,0 +1,25 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5174:5174"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+  backend:
+    build: ./server
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - sqlite_data:/data
+    environment:
+      - DB_PATH=/data/poliquiz.db
+      - MISTRAL_KEY=${MISTRAL_KEY}
+
+volumes:
+  sqlite_data:
