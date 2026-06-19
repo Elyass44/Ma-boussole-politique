@@ -1,23 +1,39 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, ThumbsUp, ThumbsDown, Minus, ExternalLink, LogOut } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Minus, ExternalLink, LogOut, Sparkles } from 'lucide-react'
 import confetti from 'canvas-confetti'
-import { getSummary } from '../services/ai.js'
+import { getSummary, getInsights } from '../services/ai.js'
 
 export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon }) {
   const [clicked, setClicked] = useState(null)
   const [summary, setSummary] = useState(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
+  const [insights, setInsights] = useState(null)
+  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [openInsight, setOpenInsight] = useState(null)
 
   useEffect(() => {
     setClicked(null)
     setSummary(null)
     setSummaryLoading(true)
+    setInsights(null)
+    setInsightsLoading(false)
+    setOpenInsight(null)
     getSummary(scrutin).then(result => {
       setSummary(result)
       setSummaryLoading(false)
     })
   }, [scrutin.uid])
+
+  async function handleInsight(key) {
+    if (openInsight === key) return setOpenInsight(null)
+    setOpenInsight(key)
+    if (insights) return
+    setInsightsLoading(true)
+    const data = await getInsights(scrutin)
+    setInsights(data)
+    setInsightsLoading(false)
+  }
 
   function handleAnswer(reponse) {
     if (clicked) return
@@ -35,10 +51,22 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
   })
 
   const dossierRef = scrutin.objet?.dossierLegislatif?.dossierRef
-  const dossierUrl = dossierRef
-    ? `https://www.assemblee-nationale.fr/dyn/17/dossiers/${dossierRef}`
-    : null
-  const amendNum = scrutin.titre.match(/n°\s*(\d+)/i)?.[1] ?? null
+  const dossierUrl = scrutin.canonical_url
+    ?? (dossierRef
+      ? `https://www.assemblee-nationale.fr/dyn/17/dossiers/${dossierRef}`
+      : `https://www.civix.fr/votes/${scrutin.uid}`)
+
+  // Libellé de la loi : préférer le libellé du dossier, sinon nettoyer le titre
+  // On retire juste "l'ensemble de la/du" et on capitalise
+  const loiLibelle = scrutin.objet?.dossierLegislatif?.libelle
+    ?? (() => {
+        const s = scrutin.titre
+          .replace(/^l'ensemble d(?:e la|u) /i, '')
+          .replace(/\s*\([^)]*\)\s*/g, '')
+          .replace(/\.$/, '')
+          .trim()
+        return s.charAt(0).toUpperCase() + s.slice(1)
+      })()
 
   const pct = Math.round(((currentIndex + 1) / total) * 100)
 
@@ -75,29 +103,19 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
 
           {/* Question card */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
-
-            {/* Badges */}
-            <div className="flex items-center gap-2 flex-wrap mb-3">
-              {amendNum && (
-                <span className="text-xs font-mono font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                  Amdt n°{amendNum}
-                </span>
-              )}
+            <div className="flex items-center justify-between gap-2 mb-3">
               <span className="text-xs text-slate-400">{date}</span>
-              <div className="flex-1" />
-              {dossierUrl && (
-                <a
-                  href={dossierUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors px-2.5 py-1 rounded-lg"
-                >
-                  Dossier <ExternalLink size={11} />
-                </a>
-              )}
+              <a
+                href={dossierUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 flex items-center gap-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors px-2.5 py-1 rounded-lg"
+              >
+                Consulter <ExternalLink size={11} />
+              </a>
             </div>
 
-            {/* Proposition */}
+            {/* Proposition IA */}
             {summaryLoading ? (
               <div className="space-y-2 animate-pulse">
                 <div className="h-5 bg-slate-200 rounded w-full" />
@@ -114,32 +132,73 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
             )}
           </div>
 
-          {/* Contexte IA */}
-          {(summaryLoading || summary?.resume) && (
-            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                {summaryLoading ? (
-                  <svg className="animate-spin text-indigo-400" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
-                  </svg>
-                ) : (
-                  <Sparkles size={13} className="text-indigo-400" />
-                )}
-                <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wide">
-                  {summaryLoading ? 'Génération en cours…' : 'Contexte'}
-                </span>
+          {/* Contexte */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Contexte</p>
+            <p className="text-sm text-slate-700 leading-relaxed">{loiLibelle}</p>
+            {scrutin.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {scrutin.tags.map(tag => (
+                  <span key={tag} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                    {tag.replace(/_/g, ' ')}
+                  </span>
+                ))}
               </div>
-              {summaryLoading ? (
-                <div className="space-y-2 animate-pulse">
-                  <div className="h-3 bg-indigo-200 rounded w-full" />
-                  <div className="h-3 bg-indigo-200 rounded w-5/6" />
-                  <div className="h-3 bg-indigo-200 rounded w-3/5" />
+            )}
+          </div>
+
+          {/* Questions IA */}
+          <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)' }}>
+            <div className="px-4 pt-3 pb-2 flex items-center gap-1.5">
+              <Sparkles size={13} className="text-white/80" />
+              <p className="text-xs font-semibold text-white/80 uppercase tracking-wide">Éclairage IA</p>
+            </div>
+            <div className="px-3 pb-3 space-y-2">
+              <div className="flex gap-2">
+                {[
+                  { key: 'concret',   label: 'Ce que ça change' },
+                  { key: 'arguments', label: 'Arguments pour et contre' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => handleInsight(key)}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-colors text-center ${
+                      openInsight === key
+                        ? 'bg-white text-purple-700'
+                        : 'bg-white/15 text-white hover:bg-white/25'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {openInsight && (
+                <div className="rounded-xl bg-white/10 px-3 py-3 space-y-3">
+                  {insightsLoading ? (
+                    <div className="space-y-1.5 animate-pulse">
+                      <div className="h-3 bg-white/20 rounded w-full" />
+                      <div className="h-3 bg-white/20 rounded w-4/5" />
+                      <div className="h-3 bg-white/20 rounded w-3/5" />
+                    </div>
+                  ) : insights ? (
+                    (openInsight === 'arguments' ? ['pour', 'contre'] : ['concret']).map(f => insights[f] ? (
+                      <div key={f}>
+                        {f !== 'concret' && (
+                          <p className="text-xs font-bold text-white/60 uppercase tracking-wide mb-1">
+                            {f === 'pour' ? 'Pour' : 'Contre'}
+                          </p>
+                        )}
+                        <p className="text-xs text-white/90 leading-relaxed">{insights[f]}</p>
+                      </div>
+                    ) : null)
+                  ) : (
+                    <p className="text-xs text-white/50 italic">Informations non disponibles.</p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-sm text-slate-600 leading-relaxed">{summary.resume}</p>
               )}
             </div>
-          )}
+          </div>
 
         </div>
 
@@ -147,7 +206,8 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
         <div className="flex gap-2">
           <button
             onClick={() => handleAnswer('contre')}
-            className={`flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl bg-red-500 text-white shadow-sm transition-colors hover:bg-red-600 ${clicked === 'contre' ? 'btn-pop' : ''}`}
+            disabled={summaryLoading}
+            className={`flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl bg-red-500 text-white shadow-sm transition-all hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed ${clicked === 'contre' ? 'btn-pop' : ''}`}
           >
             <ThumbsDown size={22} />
             <span className="text-sm font-bold">Contre</span>
@@ -155,7 +215,8 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
 
           <button
             onClick={() => handleAnswer('je_ne_sais_pas')}
-            className={`w-20 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl bg-white border-2 border-slate-300 text-slate-500 transition-colors hover:bg-slate-50 ${clicked === 'je_ne_sais_pas' ? 'btn-pop' : ''}`}
+            disabled={summaryLoading}
+            className={`w-20 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl bg-white border-2 border-slate-300 text-slate-500 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed ${clicked === 'je_ne_sais_pas' ? 'btn-pop' : ''}`}
           >
             <Minus size={18} />
             <span className="text-xs font-medium leading-tight text-center">Sans<br />avis</span>
@@ -163,7 +224,8 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
 
           <button
             onClick={() => handleAnswer('pour')}
-            className={`flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl bg-emerald-500 text-white shadow-sm transition-colors hover:bg-emerald-600 ${clicked === 'pour' ? 'btn-pop' : ''}`}
+            disabled={summaryLoading}
+            className={`flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl bg-emerald-500 text-white shadow-sm transition-all hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed ${clicked === 'pour' ? 'btn-pop' : ''}`}
           >
             <ThumbsUp size={22} />
             <span className="text-sm font-bold">Pour</span>

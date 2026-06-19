@@ -51,7 +51,7 @@ export default function App() {
       const scores = computeScores(game.scrutins, newReponses, game.groupes)
       const axe = computeAxis(scores)
       const answeredCount = newReponses.filter(r => r !== 'je_ne_sais_pas').length
-      setResults({ scores, axe, answeredCount })
+      setResults({ scores, axe, answeredCount, scrutins: game.scrutins, reponses: newReponses })
       setStep('resultats')
     } else {
       const nextIndex = currentIndex + 1
@@ -102,6 +102,8 @@ export default function App() {
         scores={results.scores}
         axe={results.axe}
         answeredCount={results.answeredCount}
+        scrutins={results.scrutins}
+        reponses={results.reponses}
         onReplay={handleReplay}
       />
     )

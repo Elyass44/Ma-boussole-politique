@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const COUNTS = [
   { value: 15, duration: '~2 min', desc: 'Rapide' },
@@ -9,17 +9,46 @@ const COUNTS = [
 export default function Accueil({ onStart, error }) {
   const [count, setCount] = useState(15)
   const [agreed, setAgreed] = useState(false)
+  const [stats, setStats] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(setStats)
+      .catch(() => {})
+  }, [])
+
+  const misAJour = stats?.mis_a_jour
+    ? new Date(stats.mis_a_jour).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null
 
   return (
     <div className="min-h-screen bg-blue-900 flex flex-col items-center justify-center p-6 text-white animate-fade-up">
       <div className="max-w-md w-full space-y-6">
 
+        {/* Titre */}
         <div className="space-y-3 text-center">
           <h1 className="text-4xl font-bold tracking-tight">Ma boussole politique</h1>
           <p className="text-blue-200 text-lg leading-relaxed">
-            Votez sur des scrutins réels de l'Assemblée nationale et découvrez quel groupe parlementaire est le plus proche de vos convictions.
+            Votez sur des lois réelles de l'Assemblée nationale et découvrez quel groupe parlementaire est le plus proche de vos convictions.
           </p>
         </div>
+
+        {/* Stats */}
+        {stats && (
+          <div className="flex justify-center gap-6 py-1">
+            {[
+              { value: stats.nb_lois, label: 'lois' },
+              { value: stats.nb_groupes, label: 'groupes' },
+              { value: `17e`, label: 'législature' },
+            ].map(s => (
+              <div key={s.label} className="text-center">
+                <p className="text-xl font-black text-white">{s.value}</p>
+                <p className="text-xs text-blue-400">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Question count */}
         <div className="space-y-3">
@@ -82,8 +111,8 @@ export default function Accueil({ onStart, error }) {
           Données issues de l'Assemblée nationale via{' '}
           <a href="https://civix.fr" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-300">
             CIVIX.fr
-          </a>{' '}
-          — Licence Ouverte Etalab 2.0.
+          </a>
+          {misAJour && ` — mises à jour le ${misAJour}`}
         </p>
 
       </div>

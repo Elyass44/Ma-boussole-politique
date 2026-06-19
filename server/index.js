@@ -29,6 +29,14 @@ db.exec(`
     uid TEXT PRIMARY KEY,
     text TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS details (
+    uid TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS insights (
+    uid TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+  );
 `)
 
 const app = express()
@@ -83,6 +91,20 @@ async function getGroupes() {
 }
 
 
+async function getDetails(uid) {
+  const row = db.prepare('SELECT data FROM details WHERE uid = ?').get(uid)
+  if (row) return JSON.parse(row.data)
+
+  const json = await civixGet(`/scrutins/${uid}`)
+  const s = json.data?.attributes?.scrutin ?? {}
+  const data = {
+    tags: s.tags ?? [],
+    canonical_url: json.canonical_url ?? null,
+  }
+  db.prepare('INSERT OR REPLACE INTO details VALUES (?, ?)').run(uid, JSON.stringify(data))
+  return data
+}
+
 async function getVotes(uid) {
   const row = db.prepare('SELECT data FROM votes WHERE uid = ?').get(uid)
   if (row) return JSON.parse(row.data)
@@ -103,8 +125,11 @@ app.get('/api/game', async (req, res) => {
 
     const [allScrutins, groupes] = await Promise.all([getScrutins(), getGroupes()])
 
-    // Shuffle d'abord pour distribution aléatoire sur toute la législature
-    const shuffled = [...allScrutins].sort(() => Math.random() - 0.5)
+    // Uniquement les votes finaux sur l'ensemble d'un texte de loi
+    const textes = allScrutins.filter(s =>
+      s.type === 'texte' && /^l'ensemble d(e |u )/i.test(s.titre.trim())
+    )
+    const shuffled = [...textes].sort(() => Math.random() - 0.5)
 
     // Fetch votes par batch de 50, stop dès qu'on a assez de scrutins valides
     const valid = []
@@ -125,7 +150,7 @@ app.get('/api/game', async (req, res) => {
     }
 
     // Déduplication par dossier + sélection
-    const maxPerDossier = Math.ceil(count / 10)
+    const maxPerDossier = 1
     const seen = new Map()
     const deduped = valid.filter(s => {
       const ref = s.objet?.dossierLegislatif?.dossierRef
@@ -143,7 +168,15 @@ app.get('/api/game', async (req, res) => {
       })
     }
 
-    res.json({ scrutins, groupes })
+    // Enrichissement avec tags, canonical_url, civix_summary (cache permanent)
+    const enriched = await Promise.all(
+      scrutins.map(async s => {
+        const det = await getDetails(s.uid).catch(() => ({}))
+        return { ...s, ...det }
+      })
+    )
+
+    res.json({ scrutins: enriched, groupes })
   } catch (e) {
     console.error(e)
     res.status(500).json({ error: e.message })
@@ -210,9 +243,9 @@ app.post('/api/summaries/:uid/generate', async (req, res) => {
     try {
       const match = cached.text.match(/\{[\s\S]*\}/)
       const parsed = JSON.parse(match ? match[0] : cached.text)
-      return res.json({ proposition: parsed.proposition ?? null, resume: parsed.resume ?? cached.text })
+      return res.json({ proposition: parsed.proposition ?? null })
     } catch {
-      return res.json({ proposition: null, resume: cached.text })
+      return res.json({ proposition: null })
     }
   }
 
@@ -220,34 +253,18 @@ app.post('/api/summaries/:uid/generate', async (req, res) => {
   if (!KEY) return res.status(503).json({ error: 'no_key' })
   if (!titre) return res.status(400).json({ error: 'missing titre' })
 
-  const amendMatch = titre.match(/n°\s*(\d+)/i)
-  const amendNum = amendMatch?.[1] ?? null
-  const amendContent = (amendNum && dossierRef) ? await fetchAmendementTexte(dossierRef, amendNum) : null
-
   const lines = [`Intitulé du vote : "${titre}"`]
   if (dossierLibelle) lines.push(`Dossier législatif : "${dossierLibelle}"`)
   if (type) lines.push(`Type : ${type}`)
-  if (amendContent) {
-    lines.push(`\nDispositif : ${amendContent.dispositif}`)
-    if (amendContent.expose) lines.push(`Exposé des motifs : ${amendContent.expose}`)
-  }
-
-  const instruction = amendContent
-    ? `En te basant sur le contenu fourni, génère :
-- "proposition" : une phrase courte et directe (max 12 mots, infinitif ou nom) résumant la mesure soumise au vote, formulée de façon à ce qu'on puisse être Pour ou Contre
-- "resume" : 2-3 phrases expliquant concrètement ce que ça changerait pour les citoyens`
-    : `Génère :
-- "proposition" : une phrase courte et directe (max 12 mots, infinitif ou nom) résumant la mesure soumise au vote, formulée de façon à ce qu'on puisse être Pour ou Contre. Si tu manques de détails, base-toi sur l'enjeu général du dossier.
-- "resume" : 2-3 phrases expliquant concrètement ce que ça changerait pour les citoyens`
 
   const prompt = `Tu es un assistant qui reformule les votes parlementaires pour le grand public français.
 
 ${lines.join('\n')}
 
-${instruction}
+Génère une "proposition" : une phrase courte et directe (max 12 mots, infinitif ou nom) résumant la loi soumise au vote, formulée de façon à ce qu'on puisse être Pour ou Contre.
 
 Réponds UNIQUEMENT avec un objet JSON valide, sans markdown :
-{"proposition":"...","resume":"..."}
+{"proposition":"..."}
 
 Ne mentionne jamais le résultat du vote (adopté/rejeté). Aucun jugement politique.`
 
@@ -267,19 +284,100 @@ Ne mentionne jamais le résultat du vote (adopté/rejeté). Aucun jugement polit
     const raw = data.choices?.[0]?.message?.content?.trim() ?? null
     if (!raw) return res.status(502).json({ error: 'empty_response' })
 
-    let proposition = null, resume = raw
+    let proposition = null
     try {
       const match = raw.match(/\{[\s\S]*\}/)
       const parsed = JSON.parse(match ? match[0] : raw)
       proposition = parsed.proposition ?? null
-      resume = parsed.resume ?? raw
     } catch {}
 
-    const stored = JSON.stringify({ proposition, resume })
-    db.prepare('INSERT OR REPLACE INTO summaries VALUES (?, ?)').run(uid, stored)
-    res.json({ proposition, resume })
+    db.prepare('INSERT OR REPLACE INTO summaries VALUES (?, ?)').run(uid, JSON.stringify({ proposition }))
+    res.json({ proposition })
   } catch (e) {
     console.error(e)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/api/insights/:uid/generate', async (req, res) => {
+  const { uid } = req.params
+  const { titre, dossierLibelle, canonical_url, assemblee_url } = req.body
+
+  const cached = db.prepare('SELECT data FROM insights WHERE uid = ?').get(uid)
+  if (cached) return res.json(JSON.parse(cached.data))
+
+  const KEY = process.env.MISTRAL_KEY
+  if (!KEY) return res.status(503).json({ error: 'no_key' })
+  if (!titre) return res.status(400).json({ error: 'missing titre' })
+
+  const sources = [canonical_url, assemblee_url].filter(Boolean).join(' et ')
+
+  const prompt = `Tu es un assistant factuel spécialisé dans la législation française. Tu ne dis que ce que tu sais avec certitude sur cette loi. Tu n'inventes rien, tu ne généralises pas, tu ne prends pas position.
+
+Loi : "${titre}"${dossierLibelle ? `\nDossier législatif : "${dossierLibelle}"` : ''}
+Sources : ${sources}
+
+Réponds avec un objet JSON valide, sans markdown, sans commentaire. Chaque champ : 2 à 3 phrases courtes, factuelles, neutres. Si tu n'as pas assez d'information certaine sur un aspect, dis-le honnêtement en une phrase.
+
+{
+  "pour": "Arguments avancés par les partisans de cette loi.",
+  "contre": "Arguments avancés par les opposants à cette loi.",
+  "concret": "Ce que cette loi change concrètement pour les citoyens ou les institutions."
+}`
+
+  try {
+    const mistral = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${KEY}` },
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 500,
+        temperature: 0.2,
+      }),
+    })
+    if (!mistral.ok) return res.status(502).json({ error: 'mistral_error' })
+    const data = await mistral.json()
+    const raw = data.choices?.[0]?.message?.content?.trim() ?? null
+    if (!raw) return res.status(502).json({ error: 'empty_response' })
+
+    let result = { pour: null, contre: null, concret: null }
+    try {
+      const match = raw.match(/\{[\s\S]*\}/)
+      result = { ...result, ...JSON.parse(match ? match[0] : raw) }
+    } catch {}
+
+    db.prepare('INSERT OR REPLACE INTO insights VALUES (?, ?)').run(uid, JSON.stringify(result))
+    res.json(result)
+  } catch (e) {
+    console.error(e)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/stats', async (req, res) => {
+  try {
+    const [allScrutins, groupes] = await Promise.all([getScrutins(), getGroupes()])
+    const lois = allScrutins.filter(s =>
+      s.type === 'texte' && /^l'ensemble d(e |u )/i.test(s.titre.trim())
+    )
+    const adoptes = lois.filter(s => s.sort_code === 'adopté').length
+    const rejetes = lois.filter(s => s.sort_code === 'rejeté').length
+    const dernierVote = lois.reduce((max, s) =>
+      s.date_scrutin > max ? s.date_scrutin : max, ''
+    )
+    const cacheRow = db.prepare('SELECT fetched_at FROM cache WHERE key = ?').get('scrutins')
+    res.json({
+      legislature: 17,
+      nb_lois: lois.length,
+      nb_groupes: groupes.filter(g => g.abbr !== 'NI').length,
+      nb_deputes: groupes.reduce((s, g) => s + (g.effectif || 0), 0),
+      adoptes,
+      rejetes,
+      dernier_vote: dernierVote,
+      mis_a_jour: cacheRow ? new Date(cacheRow.fetched_at).toISOString() : null,
+    })
+  } catch (e) {
     res.status(500).json({ error: e.message })
   }
 })

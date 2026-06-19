@@ -13,7 +13,7 @@ const AXIS_VALUES = {
   // NI (Non inscrits) intentionally excluded from axis
 }
 
-function groupMajorityPosition(groupVotes) {
+export function groupMajorityPosition(groupVotes) {
   const { pour, contre, abstention } = groupVotes
   const max = Math.max(pour, contre, abstention)
   if (max === 0) return null
@@ -53,9 +53,13 @@ export function computeAxis(scores) {
 
   scores.forEach(({ abbr, score }) => {
     const axisValue = AXIS_VALUES[abbr]
-    if (axisValue === undefined || score === 0) return
-    weightedSum += axisValue * score
-    totalWeight += score
+    if (axisValue === undefined) return
+    // Poids = concordance au-dessus du hasard (vote binaire → baseline 50%)
+    // Les groupes sous 50% n'influencent pas la position
+    const w = Math.max(0, score - 0.5)
+    if (w === 0) return
+    weightedSum += axisValue * w
+    totalWeight += w
   })
 
   return totalWeight > 0 ? weightedSum / totalWeight : 5
