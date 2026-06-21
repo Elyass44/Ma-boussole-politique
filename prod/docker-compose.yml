@@ -1,0 +1,60 @@
+# Deploy : docker compose -f prod/docker-compose.yml up -d --build
+# Pré-requis : docker volume create poliquiz_sqlite
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: prod/Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - traefik   # exposé à Traefik
+      - internal  # pour joindre le backend
+    labels:
+      - "traefik.enable=true"
+      # HTTPS
+      - "traefik.http.routers.poliquiz.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.poliquiz.entrypoints=websecure"
+      - "traefik.http.routers.poliquiz.tls.certresolver=letsencrypt"
+      - "traefik.http.services.poliquiz.loadbalancer.server.port=80"
+      # Redirect HTTP → HTTPS
+      - "traefik.http.routers.poliquiz-http.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.poliquiz-http.entrypoints=web"
+      - "traefik.http.routers.poliquiz-http.middlewares=https-redirect"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+
+  backend:
+    build:
+      context: ..
+      dockerfile: prod/Dockerfile.backend
+    restart: unless-stopped
+    volumes:
+      - sqlite_data:/data
+    environment:
+      - DB_PATH=/data/poliquiz.db
+      - MISTRAL_KEY=${MISTRAL_KEY}
+      - PORT=3001
+    networks:
+      - internal  # pas exposé à Traefik
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  sqlite_data:
+    external: true
+    name: poliquiz_sqlite
+
+networks:
+  traefik:
+    external: true
+    # Adapter au nom de ton réseau Traefik (souvent "traefik" ou "proxy")
+  internal:
+    driver: bridge
