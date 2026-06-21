@@ -232,7 +232,7 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
           </button>
         </div>
 
-        <div className="pb-4">
+        <div className="pb-safe">
           <div className="border-t border-slate-200 pt-3 flex justify-end">
             <button
               onClick={() => setConfirmAbandon(true)}

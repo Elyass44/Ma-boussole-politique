@@ -1,0 +1,20 @@
+{
+  "name": "Ma boussole politique",
+  "short_name": "Boussole politique",
+  "description": "Votez sur des lois réelles de l'Assemblée nationale et découvrez quel groupe parlementaire est le plus proche de vos convictions.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#1e3a8a",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -50,6 +50,14 @@ export default function Hemicycle({ scores, axe }) {
     setTooltip({ seg, x: e.clientX - rect.left, y: e.clientY - rect.top })
   }
 
+  function handleTouch(e, seg) {
+    e.preventDefault()
+    const touch = e.touches[0]
+    const rect = containerRef.current.getBoundingClientRect()
+    setTooltip({ seg, x: touch.clientX - rect.left, y: touch.clientY - rect.top })
+    setTimeout(() => setTooltip(null), 1800)
+  }
+
   const ordered = useMemo(() => {
     const rank = Object.fromEntries(AXIS_ORDER.map((a, i) => [a, i]))
     const known = scores
@@ -114,6 +122,7 @@ export default function Hemicycle({ scores, axe }) {
             key={seg.abbr}
             onMouseMove={e => handleMouseMove(e, seg)}
             onMouseLeave={() => setTooltip(null)}
+            onTouchStart={e => handleTouch(e, seg)}
             className="cursor-pointer"
           >
             {RINGS.map((ring, ri) => (

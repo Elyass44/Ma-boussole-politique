@@ -86,7 +86,7 @@ export default function Resultats({ scores, axe, answeredCount, scrutins, repons
           Rejouer
         </button>
 
-        <p className="text-center text-slate-500 text-xs pb-6">
+        <p className="text-center text-slate-500 text-xs pb-safe-lg">
           Données Assemblée nationale via{' '}
           <a
             href="https://civix.fr"

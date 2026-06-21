@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#0f172a"/>
+  <!-- Hemicycle arc segments -->
+  <path d="M 31 155 A 65 65 0 0 1 50 109" fill="none" stroke="#CC0033" stroke-width="22" stroke-linecap="round"/>
+  <path d="M 50 109 A 65 65 0 0 1 142 109" fill="none" stroke="#6366f1" stroke-width="22"/>
+  <path d="M 142 109 A 65 65 0 0 1 161 155" fill="none" stroke="#002395" stroke-width="22" stroke-linecap="round"/>
+  <!-- Base line -->
+  <line x1="22" y1="155" x2="170" y2="155" stroke="#1e293b" stroke-width="3"/>
+  <!-- Needle -->
+  <line x1="96" y1="155" x2="76" y2="99" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="96" cy="155" r="9" fill="white"/>
+</svg>
