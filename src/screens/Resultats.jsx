@@ -50,6 +50,15 @@ export default function Resultats({ scores, axe, answeredCount, scrutins, repons
         {/* Hémicycle */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <Hemicycle scores={scores} axe={axe} />
+          <div className="flex gap-3 mt-5">
+            <ShareButton scores={scores} answeredCount={answeredCount} />
+            <button
+              onClick={onReplay}
+              className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 active:scale-95 transition-all"
+            >
+              Rejouer
+            </button>
+          </div>
         </div>
 
         {/* Onglets classement / par question */}
@@ -76,15 +85,6 @@ export default function Resultats({ scores, axe, answeredCount, scrutins, repons
             }
           </div>
         </div>
-
-        <ShareButton scores={scores} answeredCount={answeredCount} />
-
-        <button
-          onClick={onReplay}
-          className="w-full py-4 rounded-xl bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all"
-        >
-          Rejouer
-        </button>
 
         <p className="text-center text-slate-500 text-xs pb-safe-lg">
           Données Assemblée nationale via{' '}

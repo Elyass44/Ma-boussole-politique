@@ -59,16 +59,16 @@ export default function ShareButton({ scores, answeredCount }) {
     <button
       onClick={handleShare}
       disabled={status === 'loading'}
-      className="w-full py-4 rounded-xl bg-slate-800 text-white font-bold text-lg hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-wait"
+      className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-bold text-sm hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
     >
       {status === 'loading' && <Loader size={20} className="animate-spin" />}
       {status === 'done'    && <Check size={20} />}
       {status === 'error'   && <span className="text-red-400">Erreur — réessaie</span>}
       {status === 'idle' && (canNativeShare ? <Share2 size={20} /> : <Download size={20} />)}
 
-      {status === 'loading' && 'Génération…'}
-      {status === 'done'    && (canNativeShare ? 'Partagé !' : 'Image téléchargée !')}
-      {status === 'idle'    && (canNativeShare ? 'Partager mes résultats' : 'Télécharger ma carte')}
+      {status === 'loading' && '…'}
+      {status === 'done'    && (canNativeShare ? 'Partagé !' : 'Téléchargé !')}
+      {status === 'idle'    && (canNativeShare ? 'Partager' : 'Télécharger')}
     </button>
   )
 }

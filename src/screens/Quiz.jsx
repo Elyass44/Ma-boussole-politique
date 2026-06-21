@@ -74,11 +74,17 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
     <div className="min-h-screen bg-slate-100 flex flex-col animate-fade-up">
 
       {/* Header */}
-      <div className="bg-blue-900 text-white px-4 pt-5 pb-4">
+      <div className="bg-blue-900 text-white px-4 pt-5 pb-4 shrink-0">
         <div className="max-w-2xl mx-auto space-y-3">
           <div className="flex items-end justify-between">
             <span className="text-blue-300 text-sm font-medium uppercase tracking-widest">Question</span>
-            <span className="text-blue-400 text-sm">{pct}%</span>
+            <button
+              onClick={() => setConfirmAbandon(true)}
+              className="flex items-center gap-1 text-blue-400 hover:text-blue-200 transition-colors"
+              aria-label="Abandonner"
+            >
+              <LogOut size={15} />
+            </button>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-4xl font-bold tabular-nums w-14">
@@ -97,9 +103,9 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full p-4 gap-3">
-        <div key={currentIndex} className="flex-1 flex flex-col gap-3 animate-fade-up">
+      {/* Contenu scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <div key={currentIndex} className="max-w-2xl mx-auto w-full p-4 pb-36 space-y-3 animate-fade-up">
 
           {/* Question card */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
@@ -115,7 +121,6 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
               </a>
             </div>
 
-            {/* Proposition IA */}
             {summaryLoading ? (
               <div className="space-y-2 animate-pulse">
                 <div className="h-5 bg-slate-200 rounded w-full" />
@@ -147,7 +152,7 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
             )}
           </div>
 
-          {/* Questions IA */}
+          {/* Éclairage IA */}
           <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)' }}>
             <div className="px-4 pt-3 pb-2 flex items-center gap-1.5">
               <Sparkles size={13} className="text-white/80" />
@@ -201,73 +206,64 @@ export default function Quiz({ scrutin, currentIndex, total, onAnswer, onAbandon
           </div>
 
         </div>
+      </div>
 
-        {/* Answer buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleAnswer('contre')}
-            disabled={summaryLoading}
-            className={`flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl bg-red-500 text-white shadow-sm transition-all hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed ${clicked === 'contre' ? 'btn-pop' : ''}`}
-          >
-            <ThumbsDown size={22} />
-            <span className="text-sm font-bold">Contre</span>
-          </button>
-
-          <button
-            onClick={() => handleAnswer('je_ne_sais_pas')}
-            disabled={summaryLoading}
-            className={`w-20 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl bg-white border-2 border-slate-300 text-slate-500 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed ${clicked === 'je_ne_sais_pas' ? 'btn-pop' : ''}`}
-          >
-            <Minus size={18} />
-            <span className="text-xs font-medium leading-tight text-center">Sans<br />avis</span>
-          </button>
-
-          <button
-            onClick={() => handleAnswer('pour')}
-            disabled={summaryLoading}
-            className={`flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl bg-emerald-500 text-white shadow-sm transition-all hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed ${clicked === 'pour' ? 'btn-pop' : ''}`}
-          >
-            <ThumbsUp size={22} />
-            <span className="text-sm font-bold">Pour</span>
-          </button>
-        </div>
-
-        <div className="pb-safe">
-          <div className="border-t border-slate-200 pt-3 flex justify-end">
+      {/* Barre de réponse fixée en bas */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-100/95 backdrop-blur-sm border-t border-slate-200 shadow-[0_-4px_16px_rgba(0,0,0,0.07)]">
+        <div className="max-w-2xl mx-auto px-4 pt-3 pb-safe">
+          <div className="flex gap-2">
             <button
-              onClick={() => setConfirmAbandon(true)}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+              onClick={() => handleAnswer('contre')}
+              disabled={summaryLoading}
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-red-500 text-white shadow-sm transition-all hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed ${clicked === 'contre' ? 'btn-pop' : ''}`}
             >
-              <LogOut size={13} />
-              Abandonner la partie
+              <ThumbsDown size={18} />
+              <span className="text-sm font-bold">Contre</span>
+            </button>
+
+            <button
+              onClick={() => handleAnswer('je_ne_sais_pas')}
+              disabled={summaryLoading}
+              className={`w-16 flex items-center justify-center gap-1.5 py-3.5 rounded-2xl bg-white border-2 border-slate-300 text-slate-500 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed ${clicked === 'je_ne_sais_pas' ? 'btn-pop' : ''}`}
+            >
+              <Minus size={16} />
+            </button>
+
+            <button
+              onClick={() => handleAnswer('pour')}
+              disabled={summaryLoading}
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-emerald-500 text-white shadow-sm transition-all hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed ${clicked === 'pour' ? 'btn-pop' : ''}`}
+            >
+              <ThumbsUp size={18} />
+              <span className="text-sm font-bold">Pour</span>
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Modale de confirmation */}
-        {confirmAbandon && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full">
-              <h3 className="text-base font-bold text-slate-800 mb-2">Abandonner la partie ?</h3>
-              <p className="text-sm text-slate-500 mb-5">Ta progression sera perdue.</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmAbandon(false)}
-                  className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Continuer
-                </button>
-                <button
-                  onClick={onAbandon}
-                  className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors"
-                >
-                  Abandonner
-                </button>
-              </div>
+      {/* Modale de confirmation d'abandon */}
+      {confirmAbandon && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full">
+            <h3 className="text-base font-bold text-slate-800 mb-2">Abandonner la partie ?</h3>
+            <p className="text-sm text-slate-500 mb-5">Ta progression sera perdue.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAbandon(false)}
+                className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Continuer
+              </button>
+              <button
+                onClick={onAbandon}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors"
+              >
+                Abandonner
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
     </div>
   )
