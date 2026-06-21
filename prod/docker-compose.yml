@@ -13,7 +13,7 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - traefik   # exposé à Traefik
+      - web       # exposé à Traefik
       - internal  # pour joindre le backend
     labels:
       - "traefik.enable=true"
@@ -53,8 +53,7 @@ volumes:
     name: poliquiz_sqlite
 
 networks:
-  traefik:
+  web:
     external: true
-    # Adapter au nom de ton réseau Traefik (souvent "traefik" ou "proxy")
   internal:
     driver: bridge
