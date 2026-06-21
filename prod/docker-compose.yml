@@ -1,11 +1,13 @@
-# Deploy : docker compose -f prod/docker-compose.yml up -d --build
-# Pré-requis : docker volume create poliquiz_sqlite
+# Deploy :
+#   export TAG=v1.0.0
+#   docker compose -f prod/docker-compose.yml pull
+#   docker compose -f prod/docker-compose.yml up -d
+#
+# Pré-requis (une seule fois) : docker volume create poliquiz_sqlite
 
 services:
   web:
-    build:
-      context: ..
-      dockerfile: prod/Dockerfile.web
+    image: ghcr.io/elyass44/poliquiz-web:${TAG:-latest}
     restart: unless-stopped
     depends_on:
       backend:
@@ -28,9 +30,7 @@ services:
       - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
 
   backend:
-    build:
-      context: ..
-      dockerfile: prod/Dockerfile.backend
+    image: ghcr.io/elyass44/poliquiz-backend:${TAG:-latest}
     restart: unless-stopped
     volumes:
       - sqlite_data:/data
