@@ -11,7 +11,13 @@ if [ ! -f .env ]; then
 fi
 source .env
 
-echo "==> Déploiement Ma boussole politique (${TAG:-latest})"
+# Le tag en argument écrase celui du .env
+if [ -n "$1" ]; then
+  TAG="$1"
+fi
+
+export TAG="${TAG:-latest}"
+echo "==> Déploiement Ma boussole politique (${TAG})"
 
 # Créer le volume SQLite si nécessaire (opération idempotente)
 if ! docker volume inspect poliquiz_sqlite &>/dev/null; then
