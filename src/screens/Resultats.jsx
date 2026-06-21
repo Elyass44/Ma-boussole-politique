@@ -80,7 +80,7 @@ export default function Resultats({ scores, axe, answeredCount, scrutins, repons
           </div>
           <div className="p-6">
             {tab === 'classement'
-              ? <GroupRanking scores={scores} />
+              ? <GroupRanking scores={scores} scrutins={scrutins} reponses={reponses} />
               : <QuestionReview scrutins={scrutins} reponses={reponses} scores={scores} />
             }
           </div>
