@@ -15,6 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lowercase owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -29,8 +32,8 @@ jobs:
           file: prod/Dockerfile.web
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/poliquiz-web:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/poliquiz-web:latest
+            ghcr.io/${{ env.OWNER }}/poliquiz-web:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER }}/poliquiz-web:latest
 
       - name: Build & push backend
         uses: docker/build-push-action@v6
@@ -39,5 +42,5 @@ jobs:
           file: prod/Dockerfile.backend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/poliquiz-backend:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/poliquiz-backend:latest
+            ghcr.io/${{ env.OWNER }}/poliquiz-backend:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER }}/poliquiz-backend:latest
