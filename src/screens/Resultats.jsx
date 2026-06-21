@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Hemicycle from '../components/Hemicycle.jsx'
 import GroupRanking from '../components/GroupRanking.jsx'
 import QuestionReview from '../components/QuestionReview.jsx'
+import ShareButton from '../components/ShareButton.jsx'
 
 const TABS = [
   { id: 'classement', label: 'Classement' },
@@ -75,6 +76,8 @@ export default function Resultats({ scores, axe, answeredCount, scrutins, repons
             }
           </div>
         </div>
+
+        <ShareButton scores={scores} answeredCount={answeredCount} />
 
         <button
           onClick={onReplay}
